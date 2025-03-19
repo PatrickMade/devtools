@@ -1,0 +1,54 @@
+{
+  "name": "patrick-mades-dev-tools",
+  "version": "1.0.0",
+  "description": "A collection of development tools and utilities Made by Patrick Made for Patrick Made (but feel free to use it for your own projects)",
+  "main": "index.js",
+  "bin": {
+    "pmdt": "./bin/pmdt.js",
+    "pmdt-setup-react": "./bin/setup-react-env.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react",
+    "react-native",
+    "typescript",
+    "eslint",
+    "prettier",
+    "development",
+    "tools",
+    "utilities",
+    "AI",
+    "prompts",
+    "development-tools",
+    "development-utilities",
+    "development-AI",
+    "development-prompts"
+  ],
+  "author": "Patryk Madaj",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PatrickMade/devtools"
+  },
+  "homepage": "https://github.com/PatrickMade/devtools#readme",
+  "bugs": {
+    "url": "https://github.com/PatrickMade/devtools/issues"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "tools/",
+    "index.js",
+    "README.md"
+  ]
+}
