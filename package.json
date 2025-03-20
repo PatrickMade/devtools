@@ -1,6 +1,6 @@
 {
   "name": "patrick-mades-dev-tools",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A collection of development tools and utilities Made by Patrick Made for Patrick Made (but feel free to use it for your own projects)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
