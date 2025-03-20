@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
-    "build": "tsc",
+    "build": "tsc && node scripts/post-build.js",
     "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -29,7 +29,9 @@
     "development-tools",
     "development-utilities",
     "development-AI",
-    "development-prompts"
+    "development-prompts",
+    "cli",
+    "command-line"
   ],
   "author": "Patryk Madaj",
   "license": "MIT",
