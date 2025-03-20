@@ -1,11 +1,11 @@
 {
   "name": "patrick-mades-dev-tools",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "A collection of development tools and utilities Made by Patrick Made for Patrick Made (but feel free to use it for your own projects)",
   "main": "index.js",
   "bin": {
-    "pmdt": "./bin/pmdt.js",
-    "pmdt-setup-react": "./bin/setup-react-env.js"
+    "pmdt": "bin/pmdt.js",
+    "pmdt-setup-react": "bin/setup-react-env.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -30,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/PatrickMade/devtools"
+    "url": "git+https://github.com/PatrickMade/devtools.git"
   },
   "homepage": "https://github.com/PatrickMade/devtools#readme",
   "bugs": {

@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const chalk = require('chalk');
+const os = require('os');
 
 /**
  * Creates the project configuration files
@@ -153,9 +154,7 @@ const createConfigFiles = async (options = {}) => {
       '**/dist': true,
       '**/coverage': true,
     },
-    'github.copilot.enable': {
-      '*': true,
-    },
+
   };
 
   // TypeScript config
@@ -212,7 +211,7 @@ const createConfigFiles = async (options = {}) => {
  * @returns {Promise<Object>} Result of the installation
  */
 const installDependencies = async (options = {}) => {
-  const { packageManager = 'yarn', dryRun = false } = options;
+  const { packageManager = 'yarn', dryRun = false, outputDir = process.cwd() } = options;
 
   const dependencies = [
     'eslint',
@@ -224,12 +223,109 @@ const installDependencies = async (options = {}) => {
     'eslint-config-prettier',
   ];
 
-  const command =
-    packageManager === 'npm'
-      ? `npm install --save-dev ${dependencies.join(' ')}`
-      : `yarn add --dev ${dependencies.join(' ')}`;
+  // Determine which package manager to use based on lock files
+  let detectedPackageManager = packageManager;
+  let hasYarnLock = false;
+  let hasNpmLock = false;
 
-  console.log(chalk.blue(`Installing dependencies with ${packageManager}...`));
+  try {
+    // Check for lock files in the target directory
+    hasYarnLock = fs.existsSync(path.join(outputDir, 'yarn.lock'));
+    hasNpmLock = fs.existsSync(path.join(outputDir, 'package-lock.json'));
+
+    if (hasYarnLock && !hasNpmLock) {
+      detectedPackageManager = 'yarn';
+      console.log(chalk.blue('Detected yarn.lock file, using yarn as package manager'));
+    } else if (hasNpmLock && !hasYarnLock) {
+      detectedPackageManager = 'npm';
+      console.log(chalk.blue('Detected package-lock.json file, using npm as package manager'));
+    } else if (hasYarnLock && hasNpmLock) {
+      console.log(chalk.yellow('Both yarn.lock and package-lock.json files detected. Using specified package manager.'));
+    }
+  } catch (error) {
+    console.log(chalk.yellow('Error checking for lock files, continuing with default package manager.'));
+  }
+
+  // Check for package.json and "packageManager" field
+  let useCorepack = false;
+  let packageManagerDef = null;
+
+  // Only check parent directories for packageManager if no lock files are found
+  let checkParentForPackageManager = !hasYarnLock && !hasNpmLock;
+
+  try {
+    // First, look for package.json in the target directory
+    const packageJsonPath = path.join(outputDir, 'package.json');
+    let packageJsonDir = outputDir;
+
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      if (packageJson.packageManager) {
+        useCorepack = true;
+        packageManagerDef = packageJson.packageManager;
+        console.log(chalk.blue(`Found packageManager: ${packageManagerDef} in ${packageJsonPath}`));
+      }
+    }
+    // If no packageManager field was found and we need to check parent directories
+    else if (checkParentForPackageManager) {
+      // Check if a parent directory has a package.json with packageManager field
+      // This helps find the source of unexpected packageManager errors
+      let currentDir = outputDir;
+      const homeDir = os.homedir();
+
+      while (currentDir !== path.parse(currentDir).root && currentDir !== homeDir) {
+        currentDir = path.dirname(currentDir);
+        const parentPackageJsonPath = path.join(currentDir, 'package.json');
+
+        if (fs.existsSync(parentPackageJsonPath)) {
+          try {
+            const parentPackageJson = JSON.parse(fs.readFileSync(parentPackageJsonPath, 'utf8'));
+            if (parentPackageJson.packageManager) {
+              console.log(chalk.yellow(`Warning: Found packageManager field in parent directory: ${currentDir}`));
+              console.log(chalk.yellow(`This may cause conflicts. Consider using --dryRun option.`));
+              // Don't set useCorepack here, as we want to use the local package manager
+              break;
+            }
+          } catch (e) {
+            // Ignore errors parsing parent package.json
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log(chalk.yellow('Could not read package.json, continuing with detected package manager.'));
+  }
+
+  // Build the command based on the environment
+  let command = '';
+
+  if (useCorepack) {
+    // When packageManager is defined, use npx to run the command - this automatically respects the packageManager field
+    const corepackManager = packageManagerDef.split('@')[0];
+    const corepackVersion = packageManagerDef.split('@')[1];
+
+    console.log(chalk.blue(`Project uses ${corepackManager}@${corepackVersion} defined in package.json`));
+
+    // Use npx to run the package manager command - this handles Corepack automatically
+    command = `npx ${corepackManager}`;
+
+    // Add appropriate flags based on the package manager and directory
+    if (corepackManager === 'npm') {
+      command += ` ${outputDir !== process.cwd() ? `--prefix "${outputDir}"` : ''} install --save-dev ${dependencies.join(' ')}`;
+    } else {
+      command += ` ${outputDir !== process.cwd() ? `--cwd "${outputDir}"` : ''} add --dev ${dependencies.join(' ')}`;
+    }
+
+    console.log(chalk.blue(`Installing dependencies with ${corepackManager} (via npx)...`));
+  } else {
+    // Standard approach for projects without packageManager field
+    command = detectedPackageManager === 'npm'
+      ? `npm ${outputDir !== process.cwd() ? `--prefix "${outputDir}"` : ''} install --save-dev ${dependencies.join(' ')}`
+      : `yarn ${outputDir !== process.cwd() ? `--cwd "${outputDir}"` : ''} add --dev ${dependencies.join(' ')}`;
+
+    console.log(chalk.blue(`Installing dependencies with ${detectedPackageManager}...`));
+  }
+
   console.log(chalk.gray(command));
 
   if (dryRun) {
@@ -240,6 +336,21 @@ const installDependencies = async (options = {}) => {
     execSync(command, { stdio: 'inherit' });
     return { success: true };
   } catch (error) {
+    // If the command failed and we're using Corepack, provide a helpful message
+    if (useCorepack) {
+      console.log(chalk.yellow('\nThe command failed. This might be because Corepack is not enabled.'));
+      console.log(chalk.yellow('You can enable Corepack by running:'));
+      console.log(chalk.gray('  corepack enable'));
+      console.log(chalk.yellow('\nOr you can run the tool with --dryRun to only generate configuration files:'));
+      console.log(chalk.gray('  pmdt setup-react-env --dryRun'));
+
+      return {
+        success: false,
+        error,
+        corepackRequired: true
+      };
+    }
+
     console.error(chalk.red('Error installing dependencies:'), error);
     return { success: false, error };
   }
@@ -258,7 +369,12 @@ const execute = async (options = {}) => {
   // Step 1: Install dependencies
   const installResult = await installDependencies(options);
   if (!installResult.success && !installResult.dryRun) {
-    return { success: false, stage: 'dependencies', error: installResult.error };
+    if (installResult.corepackRequired) {
+      console.log(chalk.yellow('\nSkipping dependency installation due to Corepack requirement.'));
+      console.log(chalk.yellow('Continuing with configuration file creation...\n'));
+    } else {
+      return { success: false, stage: 'dependencies', error: installResult.error };
+    }
   }
 
   // Step 2: Create configuration files
@@ -274,13 +390,31 @@ const execute = async (options = {}) => {
   console.log(chalk.green('- .vscode/settings.json'));
   console.log(chalk.green('- tsconfig.json'));
 
+  if (installResult.corepackRequired) {
+    console.log(
+      chalk.yellow(
+        '\nNote: Dependencies were not installed due to Corepack requirement.'
+      )
+    );
+    console.log(
+      chalk.yellow(
+        'After enabling Corepack with "corepack enable", install the dependencies manually:'
+      )
+    );
+    console.log(
+      chalk.gray(
+        'yarn add --dev eslint eslint-plugin-react eslint-plugin-react-hooks @typescript-eslint/eslint-plugin @typescript-eslint/parser prettier eslint-config-prettier'
+      )
+    );
+  }
+
   console.log(
     chalk.blue(
       '\nMake sure to install the recommended VSCode extensions for the best development experience.'
     )
   );
 
-  return { success: true };
+  return { success: installResult.success || installResult.corepackRequired, corepackRequired: installResult.corepackRequired };
 };
 
 // Export the tool definition
