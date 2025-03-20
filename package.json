@@ -1,6 +1,6 @@
 {
   "name": "patrick-mades-dev-tools",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "description": "A collection of development tools and utilities Made by Patrick Made for Patrick Made (but feel free to use it for your own projects)",
   "main": "index.js",
   "bin": {
@@ -50,5 +50,14 @@
     "tools/",
     "index.js",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.27.0",
+    "@typescript-eslint/parser": "^8.27.0",
+    "eslint": "^9.22.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "^3.5.3"
+  }
 }
